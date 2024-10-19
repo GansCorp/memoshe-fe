@@ -8,7 +8,7 @@ interface FlashcardCreatorProps {
 
 export const FlashcardCreator: React.FC<FlashcardCreatorProps> = ({ onSave }) => {
   const [key, setKey] = useState('');
-  const [values, setValues] = useState([{ type: 'text', content: '' }]);
+  const [values, setValues] = useState<Array<{ type: "audio" | "picture" | "text"; content: string }>>([{ type: 'text', content: '' }]);
 
   const handleSave = () => {
     const newFlashcard: Flashcard = {
