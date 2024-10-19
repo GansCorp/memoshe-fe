@@ -1,4 +1,4 @@
-Memorize - Your Study Helper [MEMOSHE]
+# Memorize - Your Study Helper [MEMOSHE]
 
 MEMOSHE is a web application designed to help users memorize and study efficiently. It offers a structured approach to learning by breaking down content into manageable chunks.
 
@@ -21,7 +21,7 @@ e.g:
 - Romaji: Watashi
 - Kanji: 私
 - Picture: [Insert picture here]
-# Value is dynamic, you can add more than one value, different type (text, picture, audio)
+Notes: Value is dynamic, you can add more than one value, different type (text, picture, audio)
 5. Click on the "Create" button
 6. Click on the "Save" button
 
