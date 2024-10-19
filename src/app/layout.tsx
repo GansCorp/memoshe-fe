@@ -1,5 +1,7 @@
+import React from 'react';
 import { NextUIProvider } from '@nextui-org/react';
 import './globals.css';
+import { Footer } from '@/components/Footer';
 
 export default function RootLayout({
   children,
@@ -8,10 +10,11 @@ export default function RootLayout({
 }) {
   return (
     <html lang="en">
-      <body>
-        <NextUIProvider>
+      <body className="flex flex-col min-h-screen bg-gray-900 text-gray-200">
+        <div className="flex-grow">
           {children}
-        </NextUIProvider>
+        </div>
+        <Footer />
       </body>
     </html>
   )
