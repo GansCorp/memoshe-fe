@@ -1,7 +1,8 @@
-import React, { useState } from 'react';
+import React, { useRef, useState } from 'react';
 import { Card, CardBody, Button } from "@nextui-org/react";
-import { Flashcard as FlashcardType } from '../../types';
-import { FaVolumeUp, FaTrash, FaSync } from 'react-icons/fa';
+import { Flashcard as FlashcardType } from '@/types';
+import { useDrag } from 'react-dnd';
+import { FaPlay, FaTrash } from 'react-icons/fa';
 
 interface FlashcardProps {
   flashcard: FlashcardType;
@@ -11,84 +12,92 @@ interface FlashcardProps {
 
 export const Flashcard: React.FC<FlashcardProps> = ({ flashcard, onDelete, onPlayAudio }) => {
   const [isFlipped, setIsFlipped] = useState(false);
+  const ref = useRef<HTMLDivElement>(null);
+  const [{ isDragging }, drag] = useDrag(() => ({
+    type: 'FLASHCARD',
+    item: { id: flashcard.id },
+    collect: (monitor) => ({
+      isDragging: !!monitor.isDragging(),
+    }),
+  }));
 
-  const audioValue = flashcard.values.find(value => value.type === 'audio');
+  drag(ref);
 
-  const handleDelete = (e: React.MouseEvent<HTMLButtonElement>) => {
-    e.stopPropagation();
-    onDelete(flashcard.id);
+  const handleFlip = () => {
+    setIsFlipped(!isFlipped);
   };
-  
+
   return (
-    <Card 
-      className="w-72 h-48 relative bg-gradient-to-br from-gray-800 to-gray-900 border border-gray-700 shadow-lg hover:shadow-xl transition-all duration-300 overflow-hidden"
-      isPressable
+    <div
+      ref={ref}
+      style={{ 
+        opacity: isDragging ? 0.5 : 1,
+        transition: 'opacity 0.3s',
+      }}
     >
-      <div className={`w-full h-full transition-transform duration-500 ${isFlipped ? 'rotate-y-180' : ''}`}>
-        <CardBody className="flex items-center justify-center p-6">
-          {isFlipped ? (
-            <div className="text-gray-200 rotate-y-180 flex flex-col items-center justify-center h-full">
-              {flashcard.values.find(value => value.type === 'picture') && (
-                <img 
-                  src={flashcard.values.find(value => value.type === 'picture')?.content} 
-                  alt="Flashcard" 
-                  className="max-h-24 rounded-md mx-auto mb-2"
-                />
-              )}
-              <div className="flex flex-wrap justify-center">
-                {flashcard.values
-                  .filter(v => v.type === 'text')
-                  .slice(0, 2)
-                  .map((textValue, textIndex) => (
-                    <p key={textIndex} className="text-sm px-1 max-w-[50%] text-center">{textValue.content}</p>
-                  ))}
-              </div>
-              {flashcard.values.find(value => value.type === 'audio') && (
-                <audio 
-                  src={flashcard.values.find(value => value.type === 'audio')?.content} 
-                  controls 
-                  className="w-full mt-2" 
-                  onPlay={() => onPlayAudio(flashcard.values.find(value => value.type === 'audio')?.content || '')}
-                />
-              )}
-            </div>
-          ) : (
-            <p className="text-2xl font-bold text-blue-400">{flashcard.key}</p>
-          )}
-        </CardBody>
-      </div>
-      
-      <div className="absolute top-2 right-2 flex space-x-2">
-        {audioValue && (
-          <Button
-            isIconOnly
-            className="bg-blue-600 hover:bg-blue-700 text-white"
-            size="sm"
-            onPress={(e: any) => {
-              e.stopPropagation();
-              onPlayAudio(audioValue.content);
+      <Card 
+        className="mb-4 bg-white shadow-md cursor-pointer transition-transform duration-300 ease-in-out hover:scale-105 active:scale-95"
+        isPressable
+        onPress={handleFlip}
+      >
+        <CardBody>
+          <div
+            style={{
+              transition: 'transform 0.6s',
+              transformStyle: 'preserve-3d',
+              transform: isFlipped ? 'rotateY(180deg)' : 'rotateY(0)',
             }}
           >
-            <FaVolumeUp />
+            <div style={{
+              backfaceVisibility: 'hidden',
+              position: isFlipped ? 'absolute' : 'relative',
+              width: '100%',
+              height: '100%',
+            }}>
+              <h3 className="text-lg font-semibold mb-2 text-gray-800">{flashcard.key}</h3>
+            </div>
+            <div style={{
+              backfaceVisibility: 'hidden',
+              transform: 'rotateY(180deg)',
+              position: isFlipped ? 'relative' : 'absolute',
+              width: '100%',
+              height: '100%',
+            }}>
+              {flashcard.values.map((value, index) => (
+                <div key={index} className="mb-2">
+                  {value.type === 'text' && <p className="text-gray-700">{value.content}</p>}
+                  {value.type === 'audio' && (
+                    <Button 
+                      color="primary" 
+                      startContent={<FaPlay />}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        onPlayAudio(value.content);
+                      }}
+                    >
+                      Play Audio
+                    </Button>
+                  )}
+                  {value.type === 'picture' && (
+                    <img src={value.content} alt="Flashcard content" className="max-w-full h-auto rounded-lg" />
+                  )}
+                </div>
+              ))}
+            </div>
+          </div>
+          <Button 
+            color="danger" 
+            startContent={<FaTrash />}
+            className="mt-4"
+            onClick={(e) => {
+              e.stopPropagation();
+              onDelete(flashcard.id);
+            }}
+          >
+            Delete
           </Button>
-        )}
-        <Button
-          isIconOnly
-          className="bg-green-600 hover:bg-green-700 text-white"
-          size="sm"
-          onPress={() => setIsFlipped(!isFlipped)}
-        >
-          <FaSync />
-        </Button>
-      </div>
-
-      <Button 
-        isIconOnly
-        onClick={handleDelete}
-        className="absolute bottom-2 right-2 bg-red-600 hover:bg-red-700 text-white w-8 h-8 min-w-0 p-0"
-      >
-        <FaTrash size={14} />
-      </Button>
-    </Card>
+        </CardBody>
+      </Card>
+    </div>
   );
 };
