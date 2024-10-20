@@ -5,11 +5,12 @@ import { FlashcardCreator, DroppableArea } from '@/components/flashcards/Flashca
 import { Flashcard as FlashcardComponent } from '@/components/flashcards/Flashcard';
 import { ChapterCreator } from '@/components/flashcards/ChapterCreator';
 import { Flashcard, Chapter } from '@/types';
-import { Button, Input, Card, CardBody, CardHeader, Divider } from '@nextui-org/react';
+import { Button, Card, CardBody, CardHeader, Tooltip } from '@nextui-org/react';
 import { useRouter } from 'next/navigation';
 import { DndProvider } from 'react-dnd';
 import { HTML5Backend } from 'react-dnd-html5-backend';
 import JSZip from 'jszip';
+import { FaFileExport, FaFileImport, FaHome } from 'react-icons/fa';
 
 export default function FlashcardsPage() {
   const [chapters, setChapters] = useState<Chapter[]>([]);
@@ -47,10 +48,6 @@ export default function FlashcardsPage() {
   }, []);
 
   const router = useRouter();
-
-  const handleBackToHome = useCallback(() => {
-    router.push('/');
-  }, [router]);
 
   const handleExport = useCallback(async () => {
     const zip = new JSZip();
@@ -154,39 +151,55 @@ export default function FlashcardsPage() {
 
   return (
     <DndProvider backend={HTML5Backend}>
-      <div className="flex flex-col flex-grow container mx-auto p-8">
-        <Card className="mb-8 bg-gray-800 shadow-xl border border-gray-700">
-          <CardHeader className="flex justify-between items-center px-6 py-4">
-            <h1 className="text-3xl font-bold text-blue-400">Flashcards</h1>
+      <div className="flex flex-col flex-grow container mx-auto p-8 bg-gray-900">
+        <Card className="mb-8 bg-gray-800 shadow-xl">
+          <CardHeader className="flex justify-between items-center px-6 py-4 bg-gradient-to-r from-blue-900 to-indigo-900">
+            <h1 className="text-3xl font-bold text-white">Flashcards</h1>
             <div className="flex space-x-2">
-              <Button color="primary" onClick={handleExport}>Export</Button>
-              <label className="cursor-pointer">
-                <Button color="secondary" as="span">Import</Button>
-                <input
-                  type="file"
-                  accept=".zip"
-                  onChange={handleImport}
-                  style={{ display: 'none' }}
-                  onClick={(e) => { (e.target as HTMLInputElement).value = ''; }}
-                />
-              </label>
-              <Button color="primary" onClick={handleBackToHome}>Back to Home</Button>
+              <Tooltip content="Export Flashcards">
+                <Button isIconOnly color="primary" variant="flat" onClick={handleExport}>
+                  <FaFileExport />
+                </Button>
+              </Tooltip>
+              <Tooltip content="Import Flashcards">
+                <label className="cursor-pointer">
+                  <Button isIconOnly color="secondary" variant="flat" as="span">
+                    <FaFileImport />
+                  </Button>
+                  <input
+                    type="file"
+                    accept=".zip"
+                    onChange={handleImport}
+                    style={{ display: 'none' }}
+                    onClick={(e) => { (e.target as HTMLInputElement).value = ''; }}
+                  />
+                </label>
+              </Tooltip>
+              <Tooltip content="Back to Home">
+                <Button isIconOnly color="default" variant="flat" onClick={() => router.push('/')}>
+                  <FaHome />
+                </Button>
+              </Tooltip>
             </div>
           </CardHeader>
-          <Divider className="bg-gray-700" />
           <CardBody className="bg-gray-800">
-            <ChapterCreator onSave={handleSaveChapter} />
-            <FlashcardCreator 
-              onSave={handleSaveFlashcard}
-              onPlayAudio={handlePlayAudio}
-              chapters={chapters}
-            />
+            <div className="mb-4">
+              <ChapterCreator onSave={handleSaveChapter} />
+            </div>
+            <div>
+              <FlashcardCreator 
+                onSave={handleSaveFlashcard}
+                onPlayAudio={handlePlayAudio}
+                chapters={chapters}
+              />
+            </div>
           </CardBody>
         </Card>
         
-        <Card className="mb-8 bg-gray-800 shadow-xl border border-gray-700">
+        {/* Flashcards without chapters */}
+        <Card className="mb-8 bg-gray-800 shadow-xl">
           <CardHeader>
-            <h2 className="text-xl font-semibold text-blue-300">Flashcards tanpa Bab</h2>
+            <h2 className="text-xl font-semibold text-gray-200">Flashcards tanpa Bab</h2>
           </CardHeader>
           <CardBody>
             <DroppableArea
@@ -208,16 +221,17 @@ export default function FlashcardsPage() {
           </CardBody>
         </Card>
 
-        {chapters.map(chapter => (
-          <Card key={chapter.id} className="mb-8 bg-gray-800 shadow-xl border border-gray-700">
+        {/* Chapters and their flashcards */}
+        {chapters.map((chapter) => (
+          <Card key={chapter.id} className="mb-8 bg-gray-800 shadow-xl">
             <CardHeader>
-              <h2 className="text-xl font-semibold text-blue-300">{chapter.title}</h2>
+              <h2 className="text-xl font-semibold text-gray-200">{chapter.title}</h2>
             </CardHeader>
             <CardBody>
               {chapter.subchapters && chapter.subchapters.length > 0 ? (
                 chapter.subchapters.map(subchapter => (
                   <div key={subchapter.id} className="mb-4">
-                    <h3 className="text-xl font-semibold text-blue-300 mb-2">{subchapter.title}</h3>
+                    <h3 className="text-lg font-semibold text-gray-700 mb-2">{subchapter.title}</h3>
                     <DroppableArea
                       chapterId={chapter.id}
                       subchapterId={subchapter.id}

@@ -1,36 +1,51 @@
+'use client';
+
 import React from 'react';
 import { Navbar, NavbarBrand, NavbarContent, NavbarItem, Link, Button } from "@nextui-org/react";
+import NextLink from 'next/link';
 
 export function Header() {
   return (
-    <Navbar isBordered className="bg-gray-800">
+    <Navbar isBordered className="bg-gray-800 border-b border-gray-700">
       <NavbarBrand>
-        <Link href="/" className="font-bold text-inherit text-white no-underline">
-          <p className="font-bold text-inherit text-white m-0">MEMOSHE</p>
-        </Link>
+        <NextLink href="/" passHref legacyBehavior>
+          <Link className="font-bold text-inherit text-blue-400 no-underline">
+            <p className="font-bold text-inherit m-0 text-2xl">
+              MEMOSHE
+            </p>
+          </Link>
+        </NextLink>
       </NavbarBrand>
       <NavbarContent className="hidden sm:flex gap-4" justify="center">
         <NavbarItem>
-          <Link color="foreground" href="#" className="text-gray-300 hover:text-white">
-            Beranda
-          </Link>
+          <NextLink href="/" passHref legacyBehavior>
+            <Link className="text-gray-300 hover:text-blue-400 transition duration-300">
+              Beranda
+            </Link>
+          </NextLink>
         </NavbarItem>
         <NavbarItem>
-          <Link color="foreground" href="#" className="text-gray-300 hover:text-white">
-            Flashcards
-          </Link>
+          <NextLink href="/flashcards" passHref legacyBehavior>
+            <Link className="text-gray-300 hover:text-blue-400 transition duration-300">
+              Flashcards
+            </Link>
+          </NextLink>
         </NavbarItem>
         <NavbarItem>
-          <Link color="foreground" href="#" className="text-gray-300 hover:text-white">
-            Tentang
-          </Link>
+          <NextLink href="/about" passHref legacyBehavior>
+            <Link className="text-gray-300 hover:text-blue-400 transition duration-300">
+              Tentang
+            </Link>
+          </NextLink>
         </NavbarItem>
       </NavbarContent>
       <NavbarContent justify="end">
         <NavbarItem>
-          <Button as={Link} color="primary" href="#" variant="flat">
-            Masuk
-          </Button>
+          <NextLink href="/login" passHref legacyBehavior>
+            <Button as={Link} color="primary" variant="flat">
+              Masuk
+            </Button>
+          </NextLink>
         </NavbarItem>
       </NavbarContent>
     </Navbar>
