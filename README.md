@@ -7,7 +7,7 @@ MEMOSHE is a web application designed to help users memorize and study efficient
 - **Flashcards**: Create and manage flashcards for your subjects.
 - **Download**: Download the flashcards image to your device.
 - **Shuffles**: Test your knowledge with shuffle the flashcards to make the learning more challenging and engaging.
-- **Save**: Save the flashcards to your account [You should login to see the flashcards, and in the future you should pay to save the flashcards].
+- **Save**: Save the flashcards to your account [You should login to see the flashcards, and to save the flashcards].
 
 ## How to create flashcards
 
