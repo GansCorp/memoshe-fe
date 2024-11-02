@@ -1,280 +1,245 @@
 'use client';
 
-import React, { useState, useCallback, useEffect } from 'react';
-import { FlashcardCreator, DroppableArea } from '@/components/flashcards/FlashcardCreator';
-import { Flashcard as FlashcardComponent } from '@/components/flashcards/Flashcard';
-import { ChapterCreator } from '@/components/flashcards/ChapterCreator';
-import { Flashcard, Chapter } from '@/types';
-import { Button, Card, CardBody, CardHeader, Tooltip } from '@nextui-org/react';
-import { useRouter } from 'next/navigation';
+import React, { useState } from 'react';
 import { DndProvider } from 'react-dnd';
 import { HTML5Backend } from 'react-dnd-html5-backend';
-import JSZip from 'jszip';
-import { FaFileExport, FaFileImport, FaHome } from 'react-icons/fa';
+import { Card, CardBody } from "@nextui-org/react";
+import { ChapterCreator } from '@/components/flashcards/ChapterCreator';
+import { FlashcardCreator } from '@/components/flashcards/FlashcardCreator';
+import { Flashcard } from '@/components/flashcards/Flashcard';
+import { Chapter, Flashcard as FlashcardType } from '@/types';
+import { generateId } from '@/utils/idGenerator';
+import { ZipUploader } from '@/components/flashcards/ZipUploader';
+import { ZipDownloader } from '@/components/flashcards/ZipDownloader';
+import { useLanguage } from '@/contexts/LanguageContext';
 
 export default function FlashcardsPage() {
+  const { t } = useLanguage();
   const [chapters, setChapters] = useState<Chapter[]>([]);
-  const [flashcards, setFlashcards] = useState<Flashcard[]>([]);
+  const [flashcards, setFlashcards] = useState<FlashcardType[]>([]);
+  const [selectedChapter, setSelectedChapter] = useState<string | null>(null);
+  const [selectedSubchapter, setSelectedSubchapter] = useState<string | null>(null);
 
-  const handleSaveChapter = useCallback((newChapter: Chapter) => {
-    setChapters(prevChapters => [...prevChapters, newChapter]);
-  }, []);
+  const handleCreateChapter = (title: string) => {
+    if (chapters.some(chapter => chapter.title === title)) {
+      alert(t('chapterExists'));
+      return;
+    }
 
-  useEffect(() => {
-    console.log('Updated chapters:', chapters);
-  }, [chapters]);
+    const newChapter: Chapter = {
+      id: generateId(),
+      title,
+      subchapters: []
+    };
+    setChapters([...chapters, newChapter]);
+  };
 
-  const handleSaveFlashcard = useCallback((flashcard: Omit<Flashcard, 'chapterId' | 'subchapterId'>, chapterId: string, subchapterId?: string) => {
-    setFlashcards(prevFlashcards => [...prevFlashcards, { ...flashcard, chapterId, subchapterId }]);
-  }, []);
+  const handleCreateSubchapter = (chapterId: string, title: string) => {
+    const chapter = chapters.find(c => c.id === chapterId);
+    if (chapter?.subchapters?.some(sub => sub.title === title)) {
+      alert(t('subchapterExists'));
+      return;
+    }
 
-  const handleDeleteFlashcard = useCallback((id: string) => {
-    setFlashcards(prevFlashcards => prevFlashcards.filter(flashcard => flashcard.id !== id));
-  }, []);
+    const newChapters = chapters.map(chapter => {
+      if (chapter.id === chapterId) {
+        return {
+          ...chapter,
+          subchapters: [...(chapter.subchapters || []), { id: generateId(), title }]
+        };
+      }
+      return chapter;
+    });
+    setChapters(newChapters);
+  };
 
-  const handlePlayAudio = useCallback((audioUrl: string) => {
+  const handleCreateFlashcard = (key: string, values: { type: 'text' | 'audio' | 'picture', content: string }[]) => {
+    if (!selectedChapter) {
+      alert(t('selectChapterFirst'));
+      return;
+    }
+
+    const existingCards = flashcards.filter(card => {
+      if (selectedSubchapter) {
+        return card.subchapterId === selectedSubchapter;
+      }
+      return card.chapterId === selectedChapter && !card.subchapterId;
+    });
+
+    if (existingCards.some(card => card.key === key)) {
+      alert(t('keyExists'));
+      return;
+    }
+
+    const newFlashcard: FlashcardType = {
+      id: generateId(),
+      key,
+      values,
+      chapterId: selectedChapter,
+      subchapterId: selectedSubchapter || undefined
+    };
+    setFlashcards([...flashcards, newFlashcard]);
+  };
+
+  const handleJsonUpload = (newChapters: Chapter[], newFlashcards: FlashcardType[]) => {
+    setChapters(newChapters);
+    setFlashcards(newFlashcards);
+    setSelectedChapter(null);
+    setSelectedSubchapter(null);
+  };
+
+  const handleDeleteFlashcard = (id: string) => {
+    if (window.confirm(t('confirmDelete'))) {
+      setFlashcards(flashcards.filter(f => f.id !== id));
+    }
+  };
+
+  const handlePlayAudio = (audioUrl: string) => {
     const audio = new Audio(audioUrl);
     audio.play();
-  }, []);
+  };
 
-  const handleMoveFlashcard = useCallback((flashcardId: string, newChapterId: string, newSubchapterId?: string) => {
-    setFlashcards(prevFlashcards =>
-      prevFlashcards.map(flashcard =>
-        flashcard.id === flashcardId
-          ? { ...flashcard, chapterId: newChapterId, subchapterId: newSubchapterId }
-          : flashcard
-      )
-    );
-  }, []);
-
-  const router = useRouter();
-
-  const handleExport = useCallback(async () => {
-    const zip = new JSZip();
-
-    // Tambahkan data JSON ke ZIP
-    const data = {
-      chapters,
-      flashcards
-    };
-    zip.file("flashcards_data.json", JSON.stringify(data, null, 2));
-
-    // Fungsi untuk mengunduh file dan menambahkannya ke ZIP
-    const addFileToZip = async (url: string, filename: string) => {
-      try {
-        const response = await fetch(url);
-        if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
-        const blob = await response.blob();
-        zip.file(filename, blob);
-      } catch (error) {
-        console.error(`Failed to add file ${filename}:`, error);
+  const getFilteredFlashcards = () => {
+    return flashcards.filter(card => {
+      if (selectedSubchapter) {
+        return card.subchapterId === selectedSubchapter;
       }
-    };
+      if (selectedChapter) {
+        return card.chapterId === selectedChapter;
+      }
+      return true;
+    });
+  };
 
-    // Tambahkan semua file media ke ZIP
-    const mediaPromises = flashcards.flatMap(flashcard =>
-      flashcard.values
-        .filter(value => value.type === 'audio' || value.type === 'picture')
-        .map(value => {
-          const extension = value.type === 'audio' ? '.mp3' : '.jpg';
-          const filename = `media/${flashcard.id}_${value.type}${extension}`;
-          return addFileToZip(value.content, filename);
-        })
-    );
-
-    // Tunggu semua file media selesai ditambahkan
-    await Promise.all(mediaPromises);
-
-    // Generate ZIP file
-    const content = await zip.generateAsync({type: "blob"});
-
-    // Unduh ZIP file
-    const url = URL.createObjectURL(content);
-    const link = document.createElement('a');
-    link.href = url;
-    link.download = 'flashcards_export.zip';
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-    URL.revokeObjectURL(url);
-  }, [chapters, flashcards]);
-
-  const handleImport = useCallback((event: React.ChangeEvent<HTMLInputElement>) => {
-    const file = event.target.files?.[0];
-    if (file) {
-      const reader = new FileReader();
-      reader.onload = async (e: ProgressEvent<FileReader>) => {
-        try {
-          const result = e.target?.result;
-          if (!result || typeof result === 'string') {
-            throw new Error('Invalid file content');
-          }
-
-          const zip = await JSZip.loadAsync(result);
-          
-          // Baca dan parse file JSON
-          const jsonFile = zip.file("flashcards_data.json");
-          if (!jsonFile) throw new Error("JSON file not found in ZIP");
-          const jsonContent = await jsonFile.async("string");
-          const data = JSON.parse(jsonContent);
-          
-          setChapters(data.chapters);
-          
-          // Proses flashcards
-          const importedFlashcards = await Promise.all(data.flashcards.map(async (flashcard: Flashcard) => {
-            const newValues = await Promise.all(flashcard.values.map(async (value) => {
-              if (value.type === 'audio' || value.type === 'picture') {
-                const extension = value.type === 'audio' ? '.mp3' : '.jpg';
-                const filename = `media/${flashcard.id}_${value.type}${extension}`;
-                const file = zip.file(filename);
-                if (file) {
-                  const blob = await file.async("blob");
-                  const newUrl = URL.createObjectURL(blob);
-                  return { ...value, content: newUrl };
-                }
-              }
-              return value;
-            }));
-            return { ...flashcard, values: newValues };
-          }));
-          
-          setFlashcards(importedFlashcards);
-          alert('Data berhasil diimpor!');
-        } catch (error) {
-          console.error('Error importing data:', error);
-          alert(`Terjadi kesalahan saat mengimpor data: ${(error as Error).message}`);
-        }
-      };
-      reader.readAsArrayBuffer(file);
+  const handleEditChapter = (chapterId: string, newTitle: string) => {
+    if (chapters.some(chapter => chapter.title === newTitle && chapter.id !== chapterId)) {
+      alert(t('chapterExists'));
+      return;
     }
-  }, []);
+
+    const newChapters = chapters.map(chapter => {
+      if (chapter.id === chapterId) {
+        return { ...chapter, title: newTitle };
+      }
+      return chapter;
+    });
+    setChapters(newChapters);
+  };
+
+  const handleEditSubchapter = (chapterId: string, subchapterId: string, newTitle: string) => {
+    const chapter = chapters.find(c => c.id === chapterId);
+    if (chapter?.subchapters?.some(sub => sub.title === newTitle && sub.id !== subchapterId)) {
+      alert(t('subchapterExists'));
+      return;
+    }
+
+    const newChapters = chapters.map(chapter => {
+      if (chapter.id === chapterId) {
+        return {
+          ...chapter,
+          subchapters: chapter.subchapters?.map(sub => {
+            if (sub.id === subchapterId) {
+              return { ...sub, title: newTitle };
+            }
+            return sub;
+          })
+        };
+      }
+      return chapter;
+    });
+    setChapters(newChapters);
+  };
+
+  const handleDeleteChapter = (chapterId: string) => {
+    if (!window.confirm(t('confirmDeleteChapter'))) {
+      return;
+    }
+
+    const newChapters = chapters.filter(c => c.id !== chapterId);
+    const newFlashcards = flashcards.filter(f => f.chapterId !== chapterId);
+    
+    setChapters(newChapters);
+    setFlashcards(newFlashcards);
+    if (selectedChapter === chapterId) {
+      setSelectedChapter(null);
+      setSelectedSubchapter(null);
+    }
+  };
+
+  const handleDeleteSubchapter = (chapterId: string, subchapterId: string) => {
+    if (!window.confirm(t('confirmDeleteSubchapter'))) {
+      return;
+    }
+
+    const newChapters = chapters.map(chapter => {
+      if (chapter.id === chapterId) {
+        return {
+          ...chapter,
+          subchapters: chapter.subchapters?.filter(sub => sub.id !== subchapterId)
+        };
+      }
+      return chapter;
+    });
+
+    const newFlashcards = flashcards.filter(f => f.subchapterId !== subchapterId);
+    
+    setChapters(newChapters);
+    setFlashcards(newFlashcards);
+    if (selectedSubchapter === subchapterId) {
+      setSelectedSubchapter(null);
+    }
+  };
 
   return (
     <DndProvider backend={HTML5Backend}>
-      <div className="flex flex-col flex-grow container mx-auto p-8 bg-gray-900">
-        <Card className="mb-8 bg-gray-800 shadow-xl">
-          <CardHeader className="flex justify-between items-center px-6 py-4 bg-gradient-to-r from-blue-900 to-indigo-900">
-            <h1 className="text-3xl font-bold text-white">Flashcards</h1>
-            <div className="flex space-x-2">
-              <Tooltip content="Export Flashcards">
-                <Button isIconOnly color="primary" variant="flat" onClick={handleExport}>
-                  <FaFileExport />
-                </Button>
-              </Tooltip>
-              <Tooltip content="Import Flashcards">
-                <label className="cursor-pointer">
-                  <Button isIconOnly color="secondary" variant="flat" as="span">
-                    <FaFileImport />
-                  </Button>
-                  <input
-                    type="file"
-                    accept=".zip"
-                    onChange={handleImport}
-                    style={{ display: 'none' }}
-                    onClick={(e) => { (e.target as HTMLInputElement).value = ''; }}
-                  />
-                </label>
-              </Tooltip>
-              <Tooltip content="Back to Home">
-                <Button isIconOnly color="default" variant="flat" onClick={() => router.push('/')}>
-                  <FaHome />
-                </Button>
-              </Tooltip>
-            </div>
-          </CardHeader>
-          <CardBody className="bg-gray-800">
-            <div className="mb-4">
-              <ChapterCreator onSave={handleSaveChapter} />
-            </div>
-            <div>
-              <FlashcardCreator 
-                onSave={handleSaveFlashcard}
-                onPlayAudio={handlePlayAudio}
-                chapters={chapters}
+      <div className="container mx-auto p-4">
+        <div className="flex gap-4 mb-6">
+          <ZipUploader onUpload={handleJsonUpload} />
+          <ZipDownloader chapters={chapters} flashcards={flashcards} />
+        </div>
+
+        <div className="grid md:grid-cols-3 gap-6">
+          <div className="md:col-span-1">
+            <Card>
+              <CardBody>
+                <ChapterCreator
+                  chapters={chapters}
+                  onCreateChapter={handleCreateChapter}
+                  onCreateSubchapter={handleCreateSubchapter}
+                  onSelectChapter={setSelectedChapter}
+                  onSelectSubchapter={setSelectedSubchapter}
+                  onEditChapter={handleEditChapter}
+                  onEditSubchapter={handleEditSubchapter}
+                  onDeleteChapter={handleDeleteChapter}
+                  onDeleteSubchapter={handleDeleteSubchapter}
+                  selectedChapter={selectedChapter}
+                  selectedSubchapter={selectedSubchapter}
+                />
+              </CardBody>
+            </Card>
+          </div>
+
+          <div className="md:col-span-2">
+            {selectedChapter && (
+              <FlashcardCreator
+                onSave={handleCreateFlashcard}
+                chapterId={selectedChapter}
+                subchapterId={selectedSubchapter || undefined}
               />
-            </div>
-          </CardBody>
-        </Card>
-        
-        {/* Flashcards without chapters */}
-        <Card className="mb-8 bg-gray-800 shadow-xl">
-          <CardHeader>
-            <h2 className="text-xl font-semibold text-gray-200">Flashcards tanpa Bab</h2>
-          </CardHeader>
-          <CardBody>
-            <DroppableArea
-              chapterId=""
-              onDrop={(droppedFlashcardId) => 
-                handleMoveFlashcard(droppedFlashcardId, '')
-              }
-            />
-            {flashcards
-              .filter(f => !f.chapterId)
-              .map(flashcard => (
-                <FlashcardComponent
+            )}
+
+            <div className="grid gap-4">
+              {getFilteredFlashcards().map((flashcard) => (
+                <Flashcard
                   key={flashcard.id}
                   flashcard={flashcard}
                   onDelete={handleDeleteFlashcard}
                   onPlayAudio={handlePlayAudio}
                 />
               ))}
-          </CardBody>
-        </Card>
-
-        {/* Chapters and their flashcards */}
-        {chapters.map((chapter) => (
-          <Card key={chapter.id} className="mb-8 bg-gray-800 shadow-xl">
-            <CardHeader>
-              <h2 className="text-xl font-semibold text-gray-200">{chapter.title}</h2>
-            </CardHeader>
-            <CardBody>
-              {chapter.subchapters && chapter.subchapters.length > 0 ? (
-                chapter.subchapters.map(subchapter => (
-                  <div key={subchapter.id} className="mb-4">
-                    <h3 className="text-lg font-semibold text-gray-700 mb-2">{subchapter.title}</h3>
-                    <DroppableArea
-                      chapterId={chapter.id}
-                      subchapterId={subchapter.id}
-                      onDrop={(droppedFlashcardId, chapterId, subchapterId) => 
-                        handleMoveFlashcard(droppedFlashcardId, chapterId, subchapterId)
-                      }
-                    />
-                    {flashcards
-                      .filter(f => f.chapterId === chapter.id && f.subchapterId === subchapter.id)
-                      .map(flashcard => (
-                        <FlashcardComponent
-                          key={flashcard.id}
-                          flashcard={flashcard}
-                          onDelete={handleDeleteFlashcard}
-                          onPlayAudio={handlePlayAudio}
-                        />
-                      ))}
-                  </div>
-                ))
-              ) : (
-                <div className="mb-4">
-                  <DroppableArea
-                    chapterId={chapter.id}
-                    subchapterId={undefined}
-                    onDrop={(droppedFlashcardId, chapterId) => 
-                      handleMoveFlashcard(droppedFlashcardId, chapterId)
-                    }
-                  />
-                  {flashcards
-                    .filter(f => f.chapterId === chapter.id && !f.subchapterId)
-                    .map(flashcard => (
-                      <FlashcardComponent
-                        key={flashcard.id}
-                        flashcard={flashcard}
-                        onDelete={handleDeleteFlashcard}
-                        onPlayAudio={handlePlayAudio}
-                      />
-                    ))}
-                </div>
-              )}
-            </CardBody>
-          </Card>
-        ))}
+            </div>
+          </div>
+        </div>
       </div>
     </DndProvider>
   );

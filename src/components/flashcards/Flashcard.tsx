@@ -3,6 +3,7 @@ import { Card, CardBody, Button } from "@nextui-org/react";
 import { Flashcard as FlashcardType } from '@/types';
 import { useDrag } from 'react-dnd';
 import { FaPlay, FaTrash } from 'react-icons/fa';
+import { useLanguage } from '@/contexts/LanguageContext';
 
 interface FlashcardProps {
   flashcard: FlashcardType;
@@ -27,6 +28,8 @@ export const Flashcard: React.FC<FlashcardProps> = ({ flashcard, onDelete, onPla
     setIsFlipped(!isFlipped);
   };
 
+  const { t } = useLanguage();
+
   return (
     <div
       ref={ref}
@@ -36,66 +39,70 @@ export const Flashcard: React.FC<FlashcardProps> = ({ flashcard, onDelete, onPla
       }}
     >
       <Card 
-        className="mb-4 bg-white shadow-md cursor-pointer transition-transform duration-300 ease-in-out hover:scale-105 active:scale-95"
-        isPressable
-        onPress={handleFlip}
+        className="mb-4 bg-blue-50 shadow-md cursor-pointer transition-transform duration-300 ease-in-out hover:scale-105 active:scale-95 hover:bg-blue-100"
       >
         <CardBody>
-          <div
-            style={{
-              transition: 'transform 0.6s',
-              transformStyle: 'preserve-3d',
-              transform: isFlipped ? 'rotateY(180deg)' : 'rotateY(0)',
-            }}
+          <div 
+            onClick={handleFlip}
+            className="w-full"
           >
-            <div style={{
-              backfaceVisibility: 'hidden',
-              position: isFlipped ? 'absolute' : 'relative',
-              width: '100%',
-              height: '100%',
-            }}>
-              <h3 className="text-lg font-semibold mb-2 text-gray-800">{flashcard.key}</h3>
-            </div>
-            <div style={{
-              backfaceVisibility: 'hidden',
-              transform: 'rotateY(180deg)',
-              position: isFlipped ? 'relative' : 'absolute',
-              width: '100%',
-              height: '100%',
-            }}>
-              {flashcard.values.map((value, index) => (
-                <div key={index} className="mb-2">
-                  {value.type === 'text' && <p className="text-gray-700">{value.content}</p>}
-                  {value.type === 'audio' && (
-                    <Button 
-                      color="primary" 
-                      startContent={<FaPlay />}
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        onPlayAudio(value.content);
-                      }}
-                    >
-                      Play Audio
-                    </Button>
-                  )}
-                  {value.type === 'picture' && (
-                    <img src={value.content} alt="Flashcard content" className="max-w-full h-auto rounded-lg" />
-                  )}
-                </div>
-              ))}
+            <div
+              style={{
+                transition: 'transform 0.6s',
+                transformStyle: 'preserve-3d',
+                transform: isFlipped ? 'rotateY(180deg)' : 'rotateY(0)',
+              }}
+            >
+              <div style={{
+                backfaceVisibility: 'hidden',
+                position: isFlipped ? 'absolute' : 'relative',
+                width: '100%',
+                height: '100%',
+              }}>
+                <h3 className="text-lg font-semibold mb-2 text-blue-800">{flashcard.key}</h3>
+              </div>
+              <div style={{
+                backfaceVisibility: 'hidden',
+                transform: 'rotateY(180deg)',
+                position: isFlipped ? 'relative' : 'absolute',
+                width: '100%',
+                height: '100%',
+              }}>
+                {flashcard.values.map((value, index) => (
+                  <div key={index} className="mb-2">
+                    {value.type === 'text' && <p className="text-blue-700">{value.content}</p>}
+                    {value.type === 'audio' && (
+                      <Button 
+                        className="bg-blue-500 hover:bg-blue-600 text-white"
+                        startContent={<FaPlay />}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          onPlayAudio(value.content);
+                        }}
+                      >
+                        {t('playAudio')}
+                      </Button>
+                    )}
+                    {value.type === 'picture' && (
+                      <img src={value.content} alt="Flashcard content" className="max-w-full h-auto rounded-lg" />
+                    )}
+                  </div>
+                ))}
+              </div>
             </div>
           </div>
-          <Button 
-            color="danger" 
-            startContent={<FaTrash />}
-            className="mt-4"
-            onClick={(e) => {
-              e.stopPropagation();
-              onDelete(flashcard.id);
-            }}
-          >
-            Delete
-          </Button>
+          <div className="mt-4">
+            <Button 
+              className="bg-red-500 hover:bg-red-600 text-white"
+              startContent={<FaTrash />}
+              onClick={(e) => {
+                e.stopPropagation();
+                onDelete(flashcard.id);
+              }}
+            >
+              {t('delete')}
+            </Button>
+          </div>
         </CardBody>
       </Card>
     </div>
