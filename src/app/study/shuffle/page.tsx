@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { Select, SelectItem, Button } from "@nextui-org/react";
 import { Chapter, Flashcard } from '@/types';
 import { FlashcardStudy } from '@/components/flashcards/FlashcardStudy';
@@ -14,13 +14,6 @@ export default function ShuffleStudyPage() {
   const [flashcards, setFlashcards] = useState<Flashcard[]>([]);
   const [shuffledCards, setShuffledCards] = useState<Flashcard[]>([]);
   const [selectedValue, setSelectedValue] = useState<string>("all");
-
-  useEffect(() => {
-    const savedChapters = JSON.parse(localStorage.getItem('chapters') || '[]');
-    const savedFlashcards = JSON.parse(localStorage.getItem('flashcards') || '[]');
-    setChapters(savedChapters);
-    setFlashcards(savedFlashcards);
-  }, []);
 
   const shuffleCards = () => {
     let cardsToShuffle = [...flashcards];

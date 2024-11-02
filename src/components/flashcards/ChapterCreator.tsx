@@ -61,7 +61,10 @@ export function ChapterCreator({
     }
   };
 
-  const handleSaveEdit = () => {
+  const handleSaveEdit = (e?: React.FormEvent) => {
+    e?.preventDefault();
+    e?.stopPropagation();
+    
     if (!editingTitle) return;
 
     if (editingTitle.type === 'chapter') {
@@ -75,44 +78,98 @@ export function ChapterCreator({
   const renderTitle = (chapter: Chapter) => {
     if (editingTitle?.type === 'chapter' && editingTitle.id === chapter.id) {
       return (
-        <Input
-          value={editingTitle.title}
-          onChange={(e) => setEditingTitle({ ...editingTitle, title: e.target.value })}
-          onKeyDown={(e) => e.key === 'Enter' && handleSaveEdit()}
-          onBlur={handleSaveEdit}
-          autoFocus
-          size="sm"
-          className="max-w-[200px]"
-          onClick={(e) => e.stopPropagation()}
-        />
+        <form 
+          onSubmit={(e) => {
+            e.preventDefault();
+            handleSaveEdit();
+          }}
+          className="flex-1"
+        >
+          <Input
+            value={editingTitle.title}
+            onChange={(e) => setEditingTitle({ ...editingTitle, title: e.target.value })}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter') {
+                e.preventDefault();
+                handleSaveEdit();
+              }
+              e.stopPropagation();
+            }}
+            onBlur={handleSaveEdit}
+            size="sm"
+            variant="bordered"
+            className="min-w-[200px] bg-white border-blue-400"
+            onClick={(e) => e.stopPropagation()}
+            autoFocus
+          />
+        </form>
       );
     }
-    return chapter.title;
+    return (
+      <span 
+        className="flex-1 cursor-pointer hover:text-blue-600"
+        onClick={(e) => {
+          e.stopPropagation();
+          setEditingTitle({
+            id: chapter.id,
+            type: 'chapter',
+            title: chapter.title
+          });
+        }}
+      >
+        {chapter.title}
+      </span>
+    );
   };
 
   const renderSubchapterTitle = (subchapter: NonNullable<Chapter['subchapters']>[number], chapterId: string) => {
     if (editingTitle?.type === 'subchapter' && editingTitle.id === subchapter.id) {
       return (
-        <Input
-          value={editingTitle.title}
-          onChange={(e) => setEditingTitle({ ...editingTitle, title: e.target.value })}
-          onKeyDown={(e) => e.key === 'Enter' && handleSaveEdit()}
-          onBlur={handleSaveEdit}
-          autoFocus
-          size="sm"
-          className="max-w-[200px]"
-          onClick={(e) => e.stopPropagation()}
-        />
+        <form 
+          onSubmit={(e) => {
+            e.preventDefault();
+            handleSaveEdit();
+          }}
+          className="flex-1"
+        >
+          <Input
+            value={editingTitle.title}
+            onChange={(e) => setEditingTitle({ ...editingTitle, title: e.target.value })}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter') {
+                e.preventDefault();
+                handleSaveEdit();
+              }
+              e.stopPropagation();
+            }}
+            onBlur={handleSaveEdit}
+            size="sm"
+            variant="bordered"
+            className="w-full bg-white border-blue-400"
+            onClick={(e) => e.stopPropagation()}
+            autoFocus
+          />
+        </form>
       );
     }
     return (
       <Button
         color={selectedSubchapter === subchapter.id ? "primary" : "default"}
         variant={selectedSubchapter === subchapter.id ? "solid" : "bordered"}
-        className="w-full"
-        onClick={() => {
-          onSelectChapter(chapterId);
-          onSelectSubchapter(subchapter.id);
+        className="w-full justify-start"
+        onClick={(e) => {
+          e.stopPropagation();
+          if (e.detail === 2) {
+            setEditingTitle({
+              id: subchapter.id,
+              type: 'subchapter',
+              chapterId: chapterId,
+              title: subchapter.title
+            });
+          } else {
+            onSelectChapter(chapterId);
+            onSelectSubchapter(subchapter.id);
+          }
         }}
       >
         {subchapter.title}
@@ -157,31 +214,30 @@ export function ChapterCreator({
             }}
             title={
               <div className="flex items-center justify-between w-full">
-                <div className="flex-1">{renderTitle(chapter)}</div>
+                {renderTitle(chapter)}
                 <Dropdown>
                   <DropdownTrigger>
-                    <span className="cursor-pointer p-1">
-                      <FaEllipsisV className="text-gray-400" />
-                    </span>
-                  </DropdownTrigger>
-                  <DropdownMenu>
-                    <DropdownItem
-                      key="edit"
-                      startContent={<FaEdit />}
-                      onClick={() => setEditingTitle({
-                        id: chapter.id,
-                        type: 'chapter',
-                        title: chapter.title
-                      })}
+                    <div 
+                      className="p-2 rounded-full hover:bg-blue-100 cursor-pointer"
+                      onClick={(e) => e.stopPropagation()}
                     >
-                      {t('editChapter')}
-                    </DropdownItem>
+                      <FaEllipsisV className="text-gray-400" />
+                    </div>
+                  </DropdownTrigger>
+                  <DropdownMenu 
+                    aria-label="Aksi bab"
+                    onAction={(key) => {
+                      if (key === 'delete') {
+                        onDeleteChapter(chapter.id);
+                      }
+                    }}
+                  >
                     <DropdownItem
                       key="delete"
                       startContent={<FaTrash />}
                       className="text-danger"
                       color="danger"
-                      onClick={() => onDeleteChapter(chapter.id)}
+                      textValue={`Hapus bab ${chapter.title}`}
                     >
                       {t('deleteChapter')}
                     </DropdownItem>
@@ -212,29 +268,27 @@ export function ChapterCreator({
                   </div>
                   <Dropdown>
                     <DropdownTrigger>
-                      <span className="cursor-pointer p-1">
-                        <FaEllipsisV className="text-gray-400" />
-                      </span>
-                    </DropdownTrigger>
-                    <DropdownMenu>
-                      <DropdownItem
-                        key="edit"
-                        startContent={<FaEdit />}
-                        onClick={() => setEditingTitle({
-                          id: subchapter.id,
-                          type: 'subchapter',
-                          chapterId: chapter.id,
-                          title: subchapter.title
-                        })}
+                      <div 
+                        className="p-2 rounded-full hover:bg-blue-100 cursor-pointer"
+                        onClick={(e) => e.stopPropagation()}
                       >
-                        {t('editSubchapter')}
-                      </DropdownItem>
+                        <FaEllipsisV className="text-gray-400" />
+                      </div>
+                    </DropdownTrigger>
+                    <DropdownMenu 
+                      aria-label="Aksi sub-bab"
+                      onAction={(key) => {
+                        if (key === 'delete') {
+                          onDeleteSubchapter(chapter.id, subchapter.id);
+                        }
+                      }}
+                    >
                       <DropdownItem
                         key="delete"
                         startContent={<FaTrash />}
                         className="text-danger"
                         color="danger"
-                        onClick={() => onDeleteSubchapter(chapter.id, subchapter.id)}
+                        textValue={`Hapus sub-bab ${subchapter.title}`}
                       >
                         {t('deleteSubchapter')}
                       </DropdownItem>

@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { DndProvider } from 'react-dnd';
 import { HTML5Backend } from 'react-dnd-html5-backend';
 import { Card, CardBody } from "@nextui-org/react";
@@ -11,28 +11,18 @@ import { Chapter, Flashcard as FlashcardType } from '@/types';
 import { generateId } from '@/utils/idGenerator';
 import { ZipUploader } from '@/components/flashcards/ZipUploader';
 import { ZipDownloader } from '@/components/flashcards/ZipDownloader';
+import { useLanguage } from '@/contexts/LanguageContext';
 
 export default function FlashcardsPage() {
+  const { t } = useLanguage();
   const [chapters, setChapters] = useState<Chapter[]>([]);
   const [flashcards, setFlashcards] = useState<FlashcardType[]>([]);
   const [selectedChapter, setSelectedChapter] = useState<string | null>(null);
   const [selectedSubchapter, setSelectedSubchapter] = useState<string | null>(null);
 
-  useEffect(() => {
-    const savedChapters = JSON.parse(localStorage.getItem('chapters') || '[]');
-    const savedFlashcards = JSON.parse(localStorage.getItem('flashcards') || '[]');
-    setChapters(savedChapters);
-    setFlashcards(savedFlashcards);
-  }, []);
-
-  const saveToLocalStorage = (newChapters: Chapter[], newFlashcards: FlashcardType[]) => {
-    localStorage.setItem('chapters', JSON.stringify(newChapters));
-    localStorage.setItem('flashcards', JSON.stringify(newFlashcards));
-  };
-
   const handleCreateChapter = (title: string) => {
     if (chapters.some(chapter => chapter.title === title)) {
-      alert('Nama bab sudah digunakan. Silakan gunakan nama lain.');
+      alert(t('chapterExists'));
       return;
     }
 
@@ -41,15 +31,13 @@ export default function FlashcardsPage() {
       title,
       subchapters: []
     };
-    const newChapters = [...chapters, newChapter];
-    setChapters(newChapters);
-    saveToLocalStorage(newChapters, flashcards);
+    setChapters([...chapters, newChapter]);
   };
 
   const handleCreateSubchapter = (chapterId: string, title: string) => {
     const chapter = chapters.find(c => c.id === chapterId);
     if (chapter?.subchapters?.some(sub => sub.title === title)) {
-      alert('Nama sub-bab sudah digunakan dalam bab ini. Silakan gunakan nama lain.');
+      alert(t('subchapterExists'));
       return;
     }
 
@@ -63,12 +51,11 @@ export default function FlashcardsPage() {
       return chapter;
     });
     setChapters(newChapters);
-    saveToLocalStorage(newChapters, flashcards);
   };
 
   const handleCreateFlashcard = (key: string, values: { type: 'text' | 'audio' | 'picture', content: string }[]) => {
     if (!selectedChapter) {
-      alert('Silakan pilih bab terlebih dahulu');
+      alert(t('selectChapterFirst'));
       return;
     }
 
@@ -80,7 +67,7 @@ export default function FlashcardsPage() {
     });
 
     if (existingCards.some(card => card.key === key)) {
-      alert('Key sudah digunakan dalam bab/sub-bab ini. Silakan gunakan key lain.');
+      alert(t('keyExists'));
       return;
     }
 
@@ -91,9 +78,7 @@ export default function FlashcardsPage() {
       chapterId: selectedChapter,
       subchapterId: selectedSubchapter || undefined
     };
-    const newFlashcards = [...flashcards, newFlashcard];
-    setFlashcards(newFlashcards);
-    saveToLocalStorage(chapters, newFlashcards);
+    setFlashcards([...flashcards, newFlashcard]);
   };
 
   const handleJsonUpload = (newChapters: Chapter[], newFlashcards: FlashcardType[]) => {
@@ -104,9 +89,9 @@ export default function FlashcardsPage() {
   };
 
   const handleDeleteFlashcard = (id: string) => {
-    const newFlashcards = flashcards.filter(f => f.id !== id);
-    setFlashcards(newFlashcards);
-    saveToLocalStorage(chapters, newFlashcards);
+    if (window.confirm(t('confirmDelete'))) {
+      setFlashcards(flashcards.filter(f => f.id !== id));
+    }
   };
 
   const handlePlayAudio = (audioUrl: string) => {
@@ -128,7 +113,7 @@ export default function FlashcardsPage() {
 
   const handleEditChapter = (chapterId: string, newTitle: string) => {
     if (chapters.some(chapter => chapter.title === newTitle && chapter.id !== chapterId)) {
-      alert('Nama bab sudah digunakan. Silakan gunakan nama lain.');
+      alert(t('chapterExists'));
       return;
     }
 
@@ -139,13 +124,12 @@ export default function FlashcardsPage() {
       return chapter;
     });
     setChapters(newChapters);
-    saveToLocalStorage(newChapters, flashcards);
   };
 
   const handleEditSubchapter = (chapterId: string, subchapterId: string, newTitle: string) => {
     const chapter = chapters.find(c => c.id === chapterId);
     if (chapter?.subchapters?.some(sub => sub.title === newTitle && sub.id !== subchapterId)) {
-      alert('Nama sub-bab sudah digunakan dalam bab ini. Silakan gunakan nama lain.');
+      alert(t('subchapterExists'));
       return;
     }
 
@@ -164,11 +148,10 @@ export default function FlashcardsPage() {
       return chapter;
     });
     setChapters(newChapters);
-    saveToLocalStorage(newChapters, flashcards);
   };
 
   const handleDeleteChapter = (chapterId: string) => {
-    if (!window.confirm('Yakin ingin menghapus bab ini? Semua flashcard dalam bab ini akan ikut terhapus.')) {
+    if (!window.confirm(t('confirmDeleteChapter'))) {
       return;
     }
 
@@ -181,11 +164,10 @@ export default function FlashcardsPage() {
       setSelectedChapter(null);
       setSelectedSubchapter(null);
     }
-    saveToLocalStorage(newChapters, newFlashcards);
   };
 
   const handleDeleteSubchapter = (chapterId: string, subchapterId: string) => {
-    if (!window.confirm('Yakin ingin menghapus sub-bab ini? Semua flashcard dalam sub-bab ini akan ikut terhapus.')) {
+    if (!window.confirm(t('confirmDeleteSubchapter'))) {
       return;
     }
 
@@ -206,7 +188,6 @@ export default function FlashcardsPage() {
     if (selectedSubchapter === subchapterId) {
       setSelectedSubchapter(null);
     }
-    saveToLocalStorage(newChapters, newFlashcards);
   };
 
   return (

@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { Accordion, AccordionItem, Button } from "@nextui-org/react";
 import { Chapter, Flashcard } from '@/types';
 import { FlashcardStudy } from '@/components/flashcards/FlashcardStudy';
@@ -14,14 +14,6 @@ export default function OrderedStudyPage() {
   const [flashcards, setFlashcards] = useState<Flashcard[]>([]);
   const [selectedChapter, setSelectedChapter] = useState<string | null>(null);
   const [selectedSubchapter, setSelectedSubchapter] = useState<string | null>(null);
-
-  useEffect(() => {
-    // Ambil data dari localStorage atau API
-    const savedChapters = JSON.parse(localStorage.getItem('chapters') || '[]');
-    const savedFlashcards = JSON.parse(localStorage.getItem('flashcards') || '[]');
-    setChapters(savedChapters);
-    setFlashcards(savedFlashcards);
-  }, []);
 
   const getFilteredFlashcards = () => {
     return flashcards.filter(card => {
