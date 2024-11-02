@@ -1,269 +1,164 @@
-import React, { useState, useRef, ReactElement, useEffect } from 'react';
-import { Input, Button, Card, CardBody, Select, SelectItem, Image, Checkbox } from "@nextui-org/react";
-import { Flashcard, Chapter } from '@/types';
-import { useDrop } from 'react-dnd';
+'use client';
 
-type FlashcardValue = {
-  type: 'text' | 'audio' | 'picture';
-  content: string;
-};
+import React, { useState, useRef } from 'react';
+import { Card, CardBody, Input, Button, Select, SelectItem } from "@nextui-org/react";
+import { FaPlus, FaImage, FaMusic } from "react-icons/fa";
+import { convertImageToBase64 } from '@/utils/imageUtils';
+import { useLanguage } from '@/contexts/LanguageContext';
 
 interface FlashcardCreatorProps {
-  onSave: (flashcard: Omit<Flashcard, 'chapterId' | 'subchapterId'>, chapterId: string, subchapterId?: string) => void;
-  onPlayAudio: (audioUrl: string) => void;
-  chapters: Chapter[];
+  onSave: (key: string, values: { type: 'text' | 'audio' | 'picture', content: string }[]) => void;
+  chapterId: string;
+  subchapterId?: string;
 }
 
-export const FlashcardCreator: React.FC<FlashcardCreatorProps> = ({ onSave, onPlayAudio, chapters }) => {
+export function FlashcardCreator({ onSave, chapterId, subchapterId }: FlashcardCreatorProps) {
+  const { t } = useLanguage();
   const [key, setKey] = useState('');
-  const [values, setValues] = useState<FlashcardValue[]>([{ type: 'text', content: '' }]);
-  const [selectedChapter, setSelectedChapter] = useState('');
-  const [selectedSubchapter, setSelectedSubchapter] = useState('');
-  const [useChapter, setUseChapter] = useState(false);
-
-  useEffect(() => {
-    console.log('Chapters:', chapters);
-  }, [chapters]);
-
-  const handleSave = () => {
-    if (key.trim() && values.every(v => v.content.trim())) {
-      onSave({
-        id: Date.now().toString(),
-        key,
-        values,
-      }, useChapter ? selectedChapter : '', useChapter && selectedSubchapter ? selectedSubchapter : undefined);
-      // Reset form
-      setKey('');
-      setValues([{ type: 'text', content: '' }]);
-      setSelectedChapter('');
-      setSelectedSubchapter('');
-      setUseChapter(false);
-    } else {
-      alert('Mohon isi key dan setidaknya satu value');
-    }
-  };
+  const [values, setValues] = useState<{ type: 'text' | 'audio' | 'picture', content: string }[]>([]);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const handleAddValue = () => {
     setValues([...values, { type: 'text', content: '' }]);
   };
 
-  const handleValueChange = (index: number, field: 'type' | 'content', value: string) => {
+  const handleValueChange = (index: number, content: string) => {
     const newValues = [...values];
-    if (field === 'type') {
-      // Pastikan tipe selalu memiliki nilai yang valid
-      const newType = ['text', 'audio', 'picture'].includes(value) ? value as FlashcardValue['type'] : 'text';
-      newValues[index] = { ...newValues[index], type: newType };
-      // Reset konten jika tipe berubah
-      if (newType !== newValues[index].type) {
-        newValues[index].content = '';
-      }
-    } else {
-      newValues[index] = { ...newValues[index], [field]: value };
-    }
+    newValues[index].content = content;
     setValues(newValues);
   };
 
-  const handleDeleteValue = (index: number) => {
-    const newValues = values.filter((_, i) => i !== index);
+  const handleTypeChange = (index: number, type: 'text' | 'audio' | 'picture') => {
+    const newValues = [...values];
+    newValues[index].type = type;
+    newValues[index].content = ''; // Reset content when type changes
     setValues(newValues);
   };
 
-  const renderMediaContent = () => {
-    const imageValue = values.find(v => v.type === 'picture');
-    const audioValue = values.find(v => v.type === 'audio');
-
-    return (
-      <div className="flex space-x-4 mt-4">
-        {imageValue && (
-          <div>
-            <Image
-              src={imageValue.content}
-              alt="Uploaded image"
-              width={100}
-              height={100}
-            />
-          </div>
-        )}
-        {audioValue && (
-          <div>
-            <audio controls src={audioValue.content}>
-              Your browser does not support the audio element.
-            </audio>
-          </div>
-        )}
-      </div>
-    );
-  };
-
-  const renderSubchapterOptions = () => {
-    const selectedChapterObj = chapters.find(c => c.id === selectedChapter);
-    console.log('Selected chapter object:', selectedChapterObj);
-
-    if (!selectedChapterObj || !selectedChapterObj.subchapters || selectedChapterObj.subchapters.length === 0) {
-      return [
-        <SelectItem key="no-subchapter" value="">
-          Tidak ada subbab
-        </SelectItem>
-      ];
+  const handleImageUpload = async (index: number, file: File) => {
+    try {
+      const base64Image = await convertImageToBase64(file);
+      const newValues = [...values];
+      newValues[index].content = base64Image;
+      setValues(newValues);
+    } catch (error) {
+      console.error('Error uploading image:', error);
+      alert('Error uploading image');
     }
-
-    return [
-      <SelectItem key="no-subchapter" value="">
-        Tanpa Subbab
-      </SelectItem>,
-      ...selectedChapterObj.subchapters.map(subchapter => (
-        <SelectItem key={subchapter.id} value={subchapter.id}>
-          {subchapter.title}
-        </SelectItem>
-      ))
-    ];
   };
 
-  const handleChapterChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
-    console.log('Selected chapter:', e.target.value);
-    setSelectedChapter(e.target.value);
-    setSelectedSubchapter('');
+  const handleSave = () => {
+    if (!key.trim()) {
+      alert(t('pleaseEnterKey'));
+      return;
+    }
+    if (values.length === 0) {
+      alert(t('pleaseAddValue'));
+      return;
+    }
+    if (values.some(v => !v.content.trim())) {
+      alert(t('pleaseFillValues'));
+      return;
+    }
+    onSave(key, values);
+    setKey('');
+    setValues([]);
   };
 
   return (
-    <Card className="bg-gray-800 border border-gray-700 shadow-md mb-4">
-      <CardBody className="space-y-4">
-        <Input
-          label="Key"
-          value={key}
-          onChange={(e) => setKey(e.target.value)}
-          className="bg-gray-700 text-gray-200"
-        />
-        {renderMediaContent()}
-        {values.map((value, index) => (
-          <div key={index} className="flex space-x-2 items-center">
-            <Select
-              label="Type"
-              selectedKeys={[value.type]}
-              onSelectionChange={(keys) => {
-                const selectedType = Array.from(keys)[0] as FlashcardValue['type'];
-                handleValueChange(index, 'type', selectedType);
-              }}
-              className="bg-gray-700 text-gray-200"
-              disallowEmptySelection
-            >
-              <SelectItem key="text" value="text">Text</SelectItem>
-              <SelectItem key="audio" value="audio">Audio</SelectItem>
-              <SelectItem key="picture" value="picture">Picture</SelectItem>
-            </Select>
-            {value.type === 'text' ? (
-              <Input
-                label="Content"
-                value={value.content}
-                onChange={(e) => handleValueChange(index, 'content', e.target.value)}
-                className="bg-gray-700 text-gray-200 flex-grow"
-              />
-            ) : (
-              <Input
-                type="file"
-                accept={value.type === 'audio' ? 'audio/*' : 'image/*'}
-                onChange={(e) => {
-                  const file = e.target.files?.[0];
-                  if (file) {
-                    handleValueChange(index, 'content', URL.createObjectURL(file));
-                  }
-                }}
-                className="bg-gray-700 text-gray-200 flex-grow"
-              />
-            )}
-            {values.length > 1 && (
-              <Button color="danger" onClick={() => handleDeleteValue(index)}>
-                Delete
-              </Button>
-            )}
-          </div>
-        ))}
-        <Button onClick={handleAddValue}>Add Value</Button>
-        
-        <Checkbox
-          isSelected={useChapter}
-          onValueChange={(isSelected: boolean) => {
-            setUseChapter(isSelected);
-            if (!isSelected) {
-              setSelectedChapter('');
-              setSelectedSubchapter('');
-            }
-          }}
-          color="primary"
-        >
-          Gunakan Bab
-        </Checkbox>
+    <Card className="mb-4 bg-blue-50">
+      <CardBody>
+        <div className="space-y-4">
+          <Input
+            label={t('key')}
+            value={key}
+            onChange={(e) => setKey(e.target.value)}
+            placeholder={t('enterKey')}
+            className="bg-white"
+            variant="bordered"
+          />
 
-        {useChapter && (
-          <>
-            <Select
-              label="Pilih Bab"
-              selectedKeys={selectedChapter ? [selectedChapter] : []}
-              onChange={handleChapterChange}
-              className="bg-gray-700 text-gray-200"
-            >
-              {chapters.map((chapter) => (
-                <SelectItem key={chapter.id} value={chapter.id}>
-                  {chapter.title}
-                </SelectItem>
-              ))}
-            </Select>
-
-            {selectedChapter && (
+          {values.map((value, index) => (
+            <div key={index} className="flex gap-2 items-start">
               <Select
-                label="Pilih Subbab (Opsional)"
-                selectedKeys={selectedSubchapter ? [selectedSubchapter] : []}
-                onChange={(e) => {
-                  console.log('Selected subchapter:', e.target.value);
-                  setSelectedSubchapter(e.target.value);
-                }}
-                className="bg-gray-700 text-gray-200"
+                value={value.type}
+                onChange={(e) => handleTypeChange(index, e.target.value as 'text' | 'audio' | 'picture')}
+                className="w-32 bg-white"
               >
-                {renderSubchapterOptions()}
+                <SelectItem key="text" value="text">{t('text')}</SelectItem>
+                <SelectItem key="picture" value="picture">{t('picture')}</SelectItem>
+                <SelectItem key="audio" value="audio">{t('audio')}</SelectItem>
               </Select>
-            )}
-          </>
-        )}
 
-        <Button color="primary" onClick={handleSave}>
-          Simpan Flashcard
-        </Button>
+              {value.type === 'text' && (
+                <Input
+                  value={value.content}
+                  onChange={(e) => handleValueChange(index, e.target.value)}
+                  placeholder={t('enterValue')}
+                  className="flex-1 bg-white"
+                  variant="bordered"
+                />
+              )}
+
+              {value.type === 'picture' && (
+                <div className="flex-1">
+                  <input
+                    type="file"
+                    accept="image/*"
+                    onChange={(e) => {
+                      const file = e.target.files?.[0];
+                      if (file) {
+                        handleImageUpload(index, file);
+                      }
+                    }}
+                    style={{ display: 'none' }}
+                    ref={fileInputRef}
+                  />
+                  <div className="flex gap-2 items-center">
+                    <Button
+                      className="bg-blue-500 hover:bg-blue-600 text-white"
+                      variant="flat"
+                      startContent={<FaImage />}
+                      onClick={() => fileInputRef.current?.click()}
+                    >
+                      {t('uploadImage')}
+                    </Button>
+                    {value.content && (
+                      <img 
+                        src={value.content} 
+                        alt="Preview" 
+                        className="h-10 w-10 object-cover rounded"
+                      />
+                    )}
+                  </div>
+                </div>
+              )}
+
+              {value.type === 'audio' && (
+                <div className="flex-1">
+                  <Input
+                    value={value.content}
+                    onChange={(e) => handleValueChange(index, e.target.value)}
+                    placeholder="Enter audio URL"
+                    startContent={<FaMusic />}
+                    className="bg-white"
+                    variant="bordered"
+                  />
+                </div>
+              )}
+            </div>
+          ))}
+
+          <div className="flex gap-2">
+            <Button onClick={handleAddValue}>
+              {t('addValue')}
+            </Button>
+            <Button onClick={handleSave}>
+              {t('saveFlashcard')}
+            </Button>
+          </div>
+        </div>
       </CardBody>
     </Card>
   );
-};
-
-interface DroppableAreaProps {
-  chapterId: string;
-  subchapterId?: string;
-  onDrop: (flashcardId: string, chapterId: string, subchapterId?: string) => void;
 }
-
-export const DroppableArea: React.FC<DroppableAreaProps> = ({ chapterId, subchapterId, onDrop }) => {
-  const ref = useRef<HTMLDivElement>(null);
-  const [{ isOver }, drop] = useDrop(() => ({
-    accept: 'FLASHCARD',
-    drop: (item: { id: string }) => onDrop(item.id, chapterId, subchapterId),
-    collect: (monitor) => ({
-      isOver: !!monitor.isOver(),
-    }),
-  }));
-
-  // Menggabungkan ref dari useDrop dengan ref kita sendiri
-  drop(ref);
-
-  return (
-    <div
-      ref={ref}
-      style={{ 
-        backgroundColor: isOver ? 'rgba(59, 130, 246, 0.5)' : 'transparent',
-        padding: '1rem',
-        marginBottom: '1rem',
-        border: '2px dashed #4B5563',
-        borderRadius: '0.5rem',
-      }}
-    >
-      {isOver ? 'Drop flashcard here' : 'Drag flashcard here'}
-    </div>
-  );
-};
